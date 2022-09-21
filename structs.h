@@ -3,6 +3,8 @@
 #include <vector>
 #include <iostream>
 #include <list>
+#include <map>
+
 #define OBSTACLE 1
 #define TRAVERSABLE 0
 #define PATH 2
@@ -70,6 +72,24 @@ struct Map
         }
         return neighbors;
     }
+    std::list<Node> getValidMoves(Node current)
+    {
+        std::list<Node> result;
+        std::list<std::pair<int, int>> deltas = {{0,1}, {1,0}, {-1,0}, {0,-1}};
+        for(auto d:deltas)
+            if(current.i + d.first < width && current.i + d.first >= 0 && current.j + d.second < height && current.j + d.second >= 0)
+                if(elements[current.i + d.first][current.j + d.second] == 0)
+                    result.push_back(Node(current.i + d.first, current.j + d.second));
+        if(diagonal_moves_allowed)
+        {
+            std::list<std::pair<int, int>> diagonal = {{-1,1}, {1,1}, {1,-1}, {-1,-1}};
+            for(auto d:diagonal)
+                if(current.i + d.first < width && current.i + d.first >= 0 && current.j + d.second < height && current.j + d.second >= 0)
+                    if ((elements[current.i + d.first][current.j + d.second] == 0) && (elements[current.i + d.first][current.j] == 0) && (elements[current.i][current.j + d.second] == 0))
+                        result.push_back(Node(current.i + d.first, current.j + d.second));
+        }
+        return result;
+    }
     void print(std::list<Node> path={})
     {
         for(auto n:path)
@@ -88,4 +108,84 @@ struct Map
             grid[n.i][n.j] = TRAVERSABLE;
     }
 };
+class OpenList
+{
+private:
+    std::list<Node> elements;
+public:
+    Node getMin()
+    {
+        return elements.front();
+    }
+    void popMin()
+    {
+        elements.pop_front();
+    }
+
+    int getSize()
+    {
+        return elements.size();
+    }
+
+    void addNode(Node node)
+    {
+        if(elements.empty())
+        {
+            elements.push_back(node);
+            return;
+        }
+        auto pos = elements.end();
+        bool posFound = false;
+        for (auto iter = elements.begin(); iter != elements.end(); ++iter)
+        {
+            if (!posFound && iter->f >= node.f)
+            {
+                pos = iter;
+                posFound = true;
+            }
+            if (iter->i == node.i && iter->j == node.j)
+            {
+                if (node.f >= iter->f)
+                    return;
+                else
+                {
+                    if (pos == iter)
+                    {
+                        iter->f = node.f;
+                        iter->g = node.g;
+                        iter->parent = node.parent;
+                        return;
+                    }
+                    elements.erase(iter);
+                    break;
+                }
+            }
+        }
+        elements.insert(pos, node);
+    }
+};
+
+class ClosedList
+{
+private:
+    std::map<std::pair<int, int>, Node> elements;
+public:
+    bool inClose(int i, int j)
+    {
+        return elements.find(std::make_pair(i,j)) != elements.end();
+    }
+    Node* getPointer(int i, int j)
+    {
+        return &elements.find(std::make_pair(i,j))->second;
+    }
+    void addClose(Node node)
+    {
+        elements.insert({std::make_pair(node.i, node.j), node});
+    }
+    int getSize()
+    {
+        return elements.size();
+    }
+};
+
 #endif //LAB1V2_STRUCTS_H

@@ -65,25 +65,56 @@ class AStar
 public:
     Result find_path(Node start, Node goal, Map grid, std::string metrictype="Octile", int connections=8, double hweight=1)
     {
-        //TODO - implement the main cycle of AStar algorithm
-        bool closedList[grid.width][grid.height];
-        Node nodeDet[grid.width][grid.height];
-        int i, j;
-        i = start.i, j = start.j;
-        std::set<Node> OPEN;
-        return Result();
+        OpenList OPEN;
+        ClosedList CLOSED;
+    auto t = std::chrono::high_resolution_clock::now();
+    Result result;
+    start.f=0;
+    start.g=0;
+    OPEN.addNode(start);
+
+    while (true) {
+        auto current = OPEN.getMin();
+        CLOSED.addClose(current);
+        OPEN.popMin();
+        auto tol = grid.getValidMoves(current);
+        for (auto b: tol) {
+            if (!CLOSED.inClose(b.i, b.j)) {
+                b.f = grid.getCost(current, b) + current.f+getHValue(current,b,input.map.diagonal_moves_allowed);
+                b.g = current.g+getHValue(current,b, grid.diagonal_moves_allowed);
+                b.parent = CLOSED.getPointer(current.x, current.y);
+                OPEN.addNode(b);
+            }
+        }
+        if (current.x == input.goal.x and current.y == input.goal.y) {
+            CLOSED.addClose(current);
+            result.pathfound = true;
+            result.path = reconstructPath(current);
+            result.cost = current.g;
+            break;
+        }
     }
+
+    result.createdNodes = CLOSED.getSize() + OPEN.getSize();
+    result.steps = CLOSED.getSize();
+    result.runtime = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - t).count();
+    return result;
+}
     double count_h_value(Node current, Node goal, std::string metrictype="Octile")
     {
         //TODO - add support of all three metrics
         return((double)sqrt((current.i-goal.i)*(current.i - goal.i) + (current.j - goal.j) * (current.j - goal.j)));
     }
-    std::list<Node> reconstruct_path(Node goal)
+    std::list<Node> reconstruct_path(Node current)
     {
-        //TODO - reconstruct path using back pointers
-        int row = goal.j, col = goal.i;
-        std::vector<Node> Path;
-        return {};
+        std::list<Node> path;
+        while(current.parent != nullptr)
+        {
+            path.push_front(current);
+            current = *current.parent;
+        }
+        path.push_front(current);
+        return path;
     }
 };
 
